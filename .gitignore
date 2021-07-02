@@ -1,0 +1,4 @@
+.env
+.gitignore.swp
+tests.py
+__pycache__
