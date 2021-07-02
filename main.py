@@ -45,7 +45,7 @@ async def hangman(ctx, arg):
             already = ', '.join(str(x) for x in game.already)
 
             await channel.send(f'Alredy used: {already}\n{game.boyStr}        ' + ' '.join(str(x) for x in game.correctLetters).replace('_', '\\_'))
-        elif (message.content.startswith('!t') and message.content.split()[1].upper() == game.word):
+        elif (message.content.startswith('!k') and message.content.split()[1].upper() == game.word):
             game.win = True
 
     if game.win:
