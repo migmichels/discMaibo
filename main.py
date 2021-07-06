@@ -3,6 +3,7 @@ from discord.ext.commands.errors import CommandInvokeError, CommandNotFound, Mis
 from hangman import Hangman
 from os import getenv
 from dotenv import load_dotenv
+import random
 
 load_dotenv()
 
@@ -24,6 +25,11 @@ async def on_command_error(ctx, error):
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user.name}')
+
+@bot.command()
+async def d20(ctx):
+    print(random.randint(0, 20))
+    await ctx.send(str(random.randint(0, 20)))
 
 @bot.command(brief = 'Starts a new game')
 async def hangman(ctx, arg):
@@ -54,6 +60,5 @@ async def hangman(ctx, arg):
         await channel.send('You lost :(')
 
     await channel.send('Game over!')
-
 
 bot.run(getenv('TOKEN'))
