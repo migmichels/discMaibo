@@ -3,7 +3,10 @@ from discord.ext.commands.errors import CommandInvokeError, CommandNotFound, Mis
 from hangman import Hangman
 from os import getenv
 from dotenv import load_dotenv
-import random
+import random, boto3, discord, requests
+
+
+s3 = boto3.resource('s3')
 
 load_dotenv()
 
@@ -26,7 +29,7 @@ async def on_command_error(ctx, error):
 async def on_ready():
     print(f'We have logged in as {bot.user.name}')
 
-@bot.command()
+@bot.command(brief = 'Rolls a d20. good luck, traveler!')
 async def d20(ctx):
     print(random.randint(0, 20))
     await ctx.send(str(random.randint(0, 20)))
@@ -60,5 +63,17 @@ async def hangman(ctx, arg):
         await channel.send('You lost :(')
 
     await channel.send('Game over!')
+
+@bot.command(brief = 'send a message to the specified channel')
+async def snd(ctx, arg):
+    await bot.get_channel(arg).send(int(ctx.message.content.split('$')[2]))
+
+@bot.command()
+async def up(ctx):
+    fileObj = ctx.message.attachments[0]
+    with open('files/file', 'wb') as file:
+        file.write(requests.get(fileObj).content)
+        s3.meta.client.upload_file('files/file', 'maibo', fileObj.filename)
+    open("files/file", "w").close()
 
 bot.run(getenv('TOKEN'))
