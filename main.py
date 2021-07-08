@@ -57,6 +57,7 @@ async def on_message(ctx):
             resp = rekognition.detect_moderation_labels(Image={'Bytes' : requests.get(fileObj).content})
             for label in resp['ModerationLabels']:
                 if label['Confidence'] <= 65:
+                    await ctx.delete()
                     fileObj.filename = 'SPOILER_' + fileObj.filename
                     await ctx.channel.send(file=await fileObj.to_file())
                     return
