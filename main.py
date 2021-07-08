@@ -43,10 +43,38 @@ async def on_command_error(ctx, error):
 async def on_ready():
     print(f'We have logged in as {bot.user.name}')
 
+@bot.event
+async def on_message(ctx):
+    if ctx.author == bot.user or ctx.content.startswith('!'):
+        await bot.process_commands(ctx)
+        return
+
+    if ctx.attachments != []:
+        fileObj = ctx.attachments[0]
+
+        if fileObj.filename.split('.')[-1] in extImgs:
+            
+            resp = rekognition.detect_moderation_labels(Image={'Bytes' : requests.get(fileObj).content})
+            for label in resp['ModerationLabels']:
+                if label['Confidence'] <= 65:
+                    fileObj.filename = 'SPOILER_' + fileObj.filename
+                    await ctx.channel.send(file=await fileObj.to_file())
+                    return
+
+    contains = False
+    i=0
+    while i<len(swearword) and not(contains):
+        contains = swearword[i] in ctx.content.upper()
+        i+=1
+
+    if contains:    
+        sns.publish(TopicArn="arn:aws:sns:us-east-1:038893253008:swearWord", 
+            Message=f"{ctx.author} mandou uma mensagem no canal {ctx.channel} contendo a palavra \'{swearword[i-1]}\'",
+            Subject="Palavrão no canal")
+
 
 @bot.command(brief = 'Rolls a d20. good luck, traveler!')
 async def d20(ctx):
-    print(random.randint(0, 20))
     await ctx.send(str(random.randint(0, 20)))
 
 @bot.command(brief = 'Starts a new hangman game')
@@ -72,9 +100,9 @@ async def hangman(ctx, arg):
         elif (message.content.startswith('!k') and message.content.split()[1].upper() == game.word):
             game.win = True
 
-    if (message.content.startswith('!stop')):
-        await channel.send('Game over!')
-        return
+        elif (message.content.startswith('!stop')):
+            await channel.send('Game over!')
+            return
 
     if game.win:
         await channel.send('Congratulations, You won!')
@@ -101,35 +129,6 @@ async def up(ctx):
     open("files/file", "w").close()
 
 
-@bot.event
-async def on_message(ctx):
-    if ctx.author == bot.user or ctx.content.startswith('!'):
-        return
-
-    if ctx.attachments != []:
-        fileObj = ctx.attachments[0]
-
-        if fileObj.filename.split('.')[-1] in extImgs:
-            
-            resp = rekognition.detect_moderation_labels(Image={'Bytes' : requests.get(fileObj).content})
-            for label in resp['ModerationLabels']:
-                if label['Confidence'] <= 65:
-                    fileObj.filename = 'SPOILER_' + fileObj.filename
-                    await ctx.channel.send(file=await fileObj.to_file())
-                    return
-
-    contains = False
-    i=0
-    while i<len(swearword) and not(contains):
-        contains = swearword[i] in ctx.content.upper()
-        i+=1
-
-    if contains:    
-        sns.publish(TopicArn="arn:aws:sns:us-east-1:038893253008:swearWord", 
-            Message=f"{ctx.author} mandou uma mensagem no canal {ctx.channel} contendo a palavra \'{swearword[i-1]}\'",
-            Subject="Palavrão no canal")
-
-    
 
 
 bot.run(getenv('TOKEN'))
