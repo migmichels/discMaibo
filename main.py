@@ -24,7 +24,7 @@ rekognition = boto3.client('rekognition',
 
 extBlock = ['bat', 'pem', 'cmd', 'env', 'dll']
 extImgs = ['ras', 'xwd', 'bmp', 'jfif', 'jpe', 'jpg', 'jpeg', 'xpm', 'ief', 'pbm', 'tif', 'gif', 'ppm', 'xbm', 'tiff', 'rgb', 'pgm', 'png', 'pnm']
-swearword = ['CARALHO', 'PUTA', 'CU', 'BUCETA', 'PARIU', 'FUDER', 'FDP', 'NIGGA', 'PORRA', 'PAPIBAQUIGRAFO', 'OTORRINOLARINGOLOGISTA', 'HEIL HITLER', 'HEIL NAZI']
+swearword = ['CARALHO', 'PUTA', ' CU ', 'BUCETA', 'PARIU', 'FUDER', 'FDP', 'NIGGA', 'PORRA', 'PAPIBAQUIGRAFO', 'OTORRINOLARINGOLOGISTA', 'HEIL HITLER', 'HEIL NAZI']
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -114,7 +114,6 @@ async def hangman(ctx, arg):
 
 @bot.command(brief = 'Sends a message to the specified channel')
 async def snd(ctx, arg):
-    print(ctx.message.content.split('$')[1])
     await bot.get_channel(int(arg)).send(ctx.message.content.split('$')[1])
 
 @bot.command(brief = 'Uploads the attached file to the bucket maibo on s3')
@@ -129,7 +128,10 @@ async def up(ctx):
         s3.upload_file('files/file', getenv('BUCKET'), fileObj.filename)
     open("files/file", "w").close()
 
-
-
+@bot.command(brief = 'Publish a message to the topic')
+async def msg(ctx):
+    sns.publish(TopicArn=getenv('ARN_TOPIC'), 
+            Message=f"{ctx.message.author.name} from Discord:{ctx.message.content.split('!msg')[1]}",
+            Subject="msg from Discord, by:" + ctx.message.author.name)
 
 bot.run(getenv('TOKEN'))
