@@ -1,4 +1,3 @@
-from discord import message
 from discord.ext import commands
 from discord.ext.commands.errors import CommandInvokeError, CommandNotFound, MissingRequiredArgument
 from hangman import Hangman
@@ -18,6 +17,10 @@ s3 = boto3.client('s3',
                 aws_access_key_id=getenv('KEY_ID'),
                 aws_secret_access_key=getenv('ACCESS_KEY'))
 rekognition = boto3.client('rekognition',
+                region_name='us-east-1', 
+                aws_access_key_id=getenv('KEY_ID'),
+                aws_secret_access_key=getenv('ACCESS_KEY'))
+db = boto3.resource('dynamodb',
                 region_name='us-east-1', 
                 aws_access_key_id=getenv('KEY_ID'),
                 aws_secret_access_key=getenv('ACCESS_KEY'))
@@ -68,11 +71,37 @@ async def on_message(ctx):
         contains = swearword[i] in ctx.content.upper()
         i+=1
 
-    if contains:    
-        sns.publish(TopicArn="arn:aws:sns:us-east-1:038893253008:swearWord", 
-            Message=f"{ctx.author} mandou uma mensagem no canal {ctx.channel} contendo a palavra \'{swearword[i-1]}\'",
-            Subject="Palavrão no canal")
+    
+    table = db.Table('BlackList')
+    if contains:
+        i-= 1
 
+        """sns.publish(TopicArn="arn:aws:sns:us-east-1:038893253008:swearWord", 
+            Message=f"{ctx.author} mandou uma mensagem no canal {ctx.channel} contendo a palavra \'{swearword[i]}\'",
+            Subject="Palavrão no canal")"""
+
+        try:
+            table.update_item(
+                Key = {
+                    'userTag' : str(ctx.author)
+                },
+                UpdateExpression = f'SET words = list_append(words, :s )',
+                ExpressionAttributeValues = {':s' : [swearword[i]]}
+            )
+        except:
+            table.put_item(
+                Item = {
+                    'userTag' : str(ctx.author),
+                    'words' : [str(swearword[i])]
+                })
+
+
+@bot.command()
+async def rm(ctx, arg, arg1):
+    print(arg, arg1)
+    channel = await bot.get_channel(int(arg))
+    msg = await channel.fetch_message(int(arg1))
+    await msg.delete()
 
 @bot.command(brief = 'Rolls a d20. good luck, traveler!')
 async def d20(ctx):
@@ -123,7 +152,7 @@ async def up(ctx):
         await ctx.channel.send('The extension\'s file is not allowed')
         return
 
-    with open('files/file', 'wb') as file:
+    with open('.temp', 'wb') as file:
         file.write(requests.get(fileObj).content)
         s3.upload_file('files/file', getenv('BUCKET'), fileObj.filename)
     open("files/file", "w").close()
@@ -133,5 +162,28 @@ async def msg(ctx):
     sns.publish(TopicArn=getenv('ARN_TOPIC'), 
             Message=f"{ctx.message.author.name} from Discord:{ctx.message.content.split('!msg')[1]}",
             Subject="msg from Discord, by:" + ctx.message.author.name)
+
+@bot.command()
+async def bl(ctx):
+    table = db.Table('BlackList')
+    response = table.scan()
+    data = response['Items']
+
+    """while 'LastEvaluatedKey' in response:
+        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        data.extend(response['Items'])
+        print(response)"""
+    
+    bList = 'Black List:\n'
+    i = 0
+    while i < len(data):
+        bList+= '\n' + data[i]['userTag'] + '\n'
+        ii = 0
+        while ii < len(data[i]['words']):
+            bList+= '   ' + data[i]['words'][ii] + '\n'
+            ii+= 1
+        i+= 1
+
+    await ctx.channel.send(bList)
 
 bot.run(getenv('TOKEN'))
